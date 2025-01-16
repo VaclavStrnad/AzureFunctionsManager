@@ -1,0 +1,148 @@
+﻿@page "/weather"
+@rendermode InteractiveServer
+@inject FunctionApps FunctionApps
+@inject ArmClient AzureClient
+
+@using Azure.Identity
+@using Azure.ResourceManager
+@using BlazorPortal.Models
+@using FunctionApp.Logic
+
+<PageTitle>Weather</PageTitle>
+
+<h1>Weather</h1>
+
+<p>This component demonstrates showing data.</p>
+
+<div>
+    <label>Phone Type</label>
+    <select @onchange="OptionChanged" value=@functionAppId>
+        @foreach (var option in phoneTypeOptions)
+        {
+            <option value="@option.Value" selected="@option.Selected">@option.Text</option>
+        }
+    </select>
+</div>
+@functionAppStatus
+<button class="tbn btn-danger" @onclick="StartFunc">Start</button>
+<button class="tbn btn-danger" @onclick="StopFunc">Stop</button>
+<div>@Message</div>
+<AzureFunctionTable @ref=azureFunctionTable FunctionAppId=@functionAppId ></AzureFunctionTable>
+
+@code {
+    string functionAppId = "";
+    string functionAppStatus = "Loading...";
+    protected AzureFunctionTable? azureFunctionTable;
+    string Message = "";
+
+    List<SelectListItem> phoneTypeOptions { get; set; } = [new SelectListItem("", "Loading ....", true)];
+
+    public record SelectListItem(string Value, string Text, bool Selected);
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        this.phoneTypeOptions = (await FunctionApps.GetListOfAllAsync(AzureClient))
+            .Reverse()
+            .Select(a => new SelectListItem(a.Id ?? "", a.Name, false))
+            .ToList();
+
+        if (!phoneTypeOptions.Any())
+        {
+            phoneTypeOptions = [new SelectListItem("", "No function app found.", true)];
+            this.functionAppId = "";
+        }
+        else
+        {
+            this.functionAppId = phoneTypeOptions.First().Value;
+        }
+
+        await azureFunctionTable?.RefreshMeAsync(functionAppId);
+        await TryRefreshStatus();
+    }
+
+    private async Task OptionChanged(ChangeEventArgs e)
+    {
+        string selectedValue = e.Value?.ToString() ?? "";
+        functionAppId = selectedValue;
+
+        await azureFunctionTable?.RefreshMeAsync(functionAppId);
+        this.Message = "";
+        await TryRefreshStatus();
+    }
+
+    private async Task StartFunc(MouseEventArgs e)
+    {
+        try
+        {
+            var result = await FunctionApps.StartAsync(AzureClient, this.functionAppId);
+            if (!result.IsError)
+            {
+                Message = "Service successfully started.";
+            }
+            else
+            {
+                Message = "Error: " + result.ReasonPhrase;
+            }
+        }
+        catch(Exception ex)
+        {
+            Message = ex.ToString();
+        }
+
+        await TryRefreshStatus();
+    }
+
+    private async Task StopFunc(MouseEventArgs e)
+    {
+        try
+        {
+            var result = await FunctionApps.StopAsync(AzureClient, this.functionAppId);
+            if (!result.IsError)
+            {
+                Message = "Service successfully stopped.";
+            }
+            else
+            {
+                Message = "Error: " + result.ReasonPhrase;
+            }
+        }
+        catch (Exception ex)
+        {
+            Message = ex.ToString();
+        }
+
+        await TryRefreshStatus();
+    }
+
+
+    private async Task RefreshStatus(MouseEventArgs e)
+    {
+        await TryRefreshStatus(true);
+    }
+
+    private async Task<bool> TryRefreshStatus(bool setErrorMessage = false)
+    {
+        try
+        {
+            if (String.IsNullOrWhiteSpace(functionAppId))
+            {
+                functionAppStatus = "na";
+                return true;
+            }
+
+            var result = await FunctionApps.GetStatusAsync(AzureClient, this.functionAppId);
+            this.functionAppStatus = result;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            if (setErrorMessage) Message = ex.ToString();
+            functionAppStatus = "na";
+            return false;
+        }
+    }
+
+
+    
+}

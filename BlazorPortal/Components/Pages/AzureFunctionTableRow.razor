@@ -1,0 +1,100 @@
+﻿@using Azure.ResourceManager
+@using BlazorPortal.Models
+@using FunctionApp.Logic
+
+@inject Functions Functions
+@inject ArmClient AzureClient
+
+
+<tr>
+    <td><button class="tbn btn-danger" @onclick="EnableFunc">Enable</button>
+        <button class="tbn btn-danger" @onclick="DisableFunc">Disable</button>
+        <button class="tbn btn-danger" @onclick="RunFunc">Run</button>
+        <button class="tbn btn-danger" @onclick="LogFunc">Log</button>
+    </td>
+    <td>@Item.Name</td>
+    <td>@Item.Status</td>
+    <td>@Item.Trigger</td>
+</tr>
+@if(Message != null){
+    <tr>
+        <td colspan="3">
+            &nbsp;&nbsp;&nbsp;@Message
+        </td>
+        <td>
+            <button class="tbn btn-danger" @onclick="HideMessageFunc">Hide Message</button>
+        </td>
+    </tr>
+}
+@if (ShowLog)
+{
+    <tr>
+        <td colspan="3">
+            <LogRender Item=@Item></LogRender>
+        </td>
+        <td>
+            <button class="tbn btn-danger" @onclick="CloseLogFunc">Close Log</button>
+        </td>
+    </tr>
+}
+
+@code {
+    [Parameter] public AzureFunction Item { get; set; }
+    [Parameter] public bool ShowLog { get; set; } = false;
+    [Parameter] public string? Message { get; set; } = null;
+
+
+    private async Task RunFunc(MouseEventArgs e)
+    {
+        try
+        {
+            var result = await Functions.RunFunction(AzureClient, Item.FunctionAppId, Item.Id);
+            Message = DateTime.Now.ToString() + " " + result;
+        }
+        catch (Exception ex)
+        {
+            Message = ex.ToString();
+        }
+    }
+
+    private async Task EnableFunc(MouseEventArgs e)
+    {
+        try
+        {
+            var result = await Functions.EnableAsync(AzureClient, Item.FunctionAppId, Item.Id);
+            Message = result;
+        }
+        catch (Exception ex)
+        {
+            Message = ex.ToString();
+        }
+    }
+
+    private async Task DisableFunc(MouseEventArgs e)
+    {
+        try
+        {
+            var result = await Functions.DisableAsync(AzureClient, Item.FunctionAppId, Item.Id);
+            Message = result;
+        }
+        catch (Exception ex)
+        {
+            Message = ex.ToString();
+        }
+    }
+
+    private void LogFunc(MouseEventArgs e)
+    {
+        ShowLog = true;
+    }
+
+    private async Task CloseLogFunc(MouseEventArgs e)
+    {
+        ShowLog = false;
+    }
+
+    private async Task HideMessageFunc(MouseEventArgs e)
+    {
+        Message = null;
+    }
+}
