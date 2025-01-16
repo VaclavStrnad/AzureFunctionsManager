@@ -1,0 +1,39 @@
+﻿@using Azure.ResourceManager
+@using BlazorPortal.Models
+@using FunctionApp.Logic
+
+@inject Functions Functions
+@inject ArmClient AzureClient
+
+@attribute [StreamRendering]
+
+<div>
+    @if(LogTextLines == null)
+    {
+        <div>Connecting...</div>
+    }
+    else
+    {
+        foreach(var l in LogTextLines)
+        {
+          <div>@l</div>
+        }
+    }
+    
+</div>
+
+@code {
+    [Parameter] public AzureFunction Item { get; set; }
+
+    private List<string>? LogTextLines = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await foreach (var line in Functions.ReadFilesystemLogs(AzureClient, Item.FunctionAppId, Item.Id))
+        {
+            if (LogTextLines == null) LogTextLines = new List<string>();
+            LogTextLines.Add(line);
+            StateHasChanged();
+        }
+    }
+}

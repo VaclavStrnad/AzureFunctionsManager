@@ -1,0 +1,98 @@
+﻿@using Azure.ResourceManager
+@using BlazorPortal.Models
+@using FunctionApp.Logic
+
+@inject Functions Functions
+@inject ArmClient AzureClient
+
+@attribute [StreamRendering]
+
+@if (functions == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th></th>
+                <th>Name</th>
+                <th>Status</th>
+                <th>Trigger</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var function in functions)
+            {
+                <AzureFunctionTableRow Item=function></AzureFunctionTableRow>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    [Parameter] public string FunctionAppId { get; set; }
+
+    private AzureFunction[]? functions;
+
+    protected override async Task OnInitializedAsync()
+    {
+        functions = null;
+
+        /*if(FunctionAppId == null)
+        {
+        functions = null;
+        return;
+        }
+
+        // Simulate asynchronous loading to demonstrate streaming rendering
+        // await Task.Delay(500);
+
+        functions = [];*/
+    }
+
+    public async Task RefreshMeAsync(string functionAppId)
+    {
+        FunctionAppId = functionAppId;
+        if (string.IsNullOrWhiteSpace(functionAppId))
+        {
+            functions = null;
+        }
+        else 
+        {
+            /*functions = Enumerable.Range(1, 5).Select(index => new AzureFunction
+                {
+                Id = index.ToString(),
+                Name = "Name " + index + " " + FunctionAppId
+            }).ToArray();*/
+
+            var funcs = Functions.GetListOfAllAsync(AzureClient, FunctionAppId);
+
+            functions = await funcs.Select(a => new AzureFunction
+            {
+                    Id = a.Id,
+                    FunctionAppId = functionAppId,
+                    Name = a.Name,
+                    Status = a.Status,
+                    Trigger = GetTriggerDescription(a.Trigger)
+            }).ToArrayAsync();
+
+
+        }
+
+        StateHasChanged();
+
+    }
+
+    private string GetTriggerDescription(string trigger)
+    {
+        try
+        {
+            return CronExpressionDescriptor.ExpressionDescriptor.GetDescription(trigger);
+        } catch(Exception ex)
+        {
+            return trigger;
+        }
+    }
+}
