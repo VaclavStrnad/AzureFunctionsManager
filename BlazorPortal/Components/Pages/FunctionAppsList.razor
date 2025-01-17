@@ -1,0 +1,141 @@
+﻿@page "/function-apps"
+@rendermode InteractiveServer
+@inject FunctionApps FunctionApps
+@inject ArmClient AzureClient
+@inject NavigationManager NavManager
+@inject PreloadService PreloadService
+@inject ToastService ToastService
+
+
+@using Azure.Identity
+@using Azure.ResourceManager
+@using BlazorPortal.Models
+@using FunctionApp.Logic
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using BlazorBootstrap
+
+<PageTitle>Weather</PageTitle>
+
+<h2>Function Apps &nbsp;&nbsp;<button class="btn btn-outline-primary" @onclick="@(() => RefreshStatus())"><Icon Name="IconName.ArrowClockwise"></Icon> Refresh</button></h2>
+
+<Preload LoadingText="Loading..."  />
+
+@if (phoneTypeOptions == null)
+{
+    <div>Loading...</div>
+}
+else
+{
+    <QuickGrid Items="phoneTypeOptions">
+        <TemplateColumn>
+            <NavLink class="nav-link" href="@("/function-app/" + context.Name)" title="Open Function App Detail Page">
+                <Icon Name="IconName.ZoomIn"></Icon> 
+            </NavLink>
+        </TemplateColumn>
+        <PropertyColumn Property="@(p => p.Name)" Sortable="true" />
+        <PropertyColumn Property="@(p => p.Status)" Sortable="true" />
+        <TemplateColumn>
+            @if (context.Status != "Running")
+            {
+                <button class="btn btn-light" @onclick="@(() => StartFunc(context))" title="Start Function App"><Icon Name="IconName.Play"></Icon></button>
+            }
+            @if (context.Status != "Stopped")
+            {
+                <button class="btn btn-light" @onclick="@(() => StopFunc(context))" title="Stop Function App"><Icon Name="IconName.Stop"></Icon></button>
+            }
+        </TemplateColumn>
+    </QuickGrid>
+}
+
+<Toasts class="p-3" AutoHide="true" StackLength="10" Placement="ToastsPlacement.TopRight" Delay="6000" ShowCloseButton="true" />
+
+
+@code {
+
+
+    IQueryable<GridItem>? phoneTypeOptions { get; set; } = null;
+
+    public record GridItem(string Id, string Name, string Status);
+
+
+    protected override async Task OnInitializedAsync()
+    {
+
+        await TryRefreshStatus();
+    }
+
+
+
+    private async Task StartFunc(GridItem e)
+    {
+        try
+        {
+            var result = await FunctionApps.StartAsync(AzureClient, e.Id);
+            if (!result.IsError)
+            {
+                ToastService.Notify(new(ToastType.Success, $"{e.Name} successfully started."));
+            }
+            else
+            {
+                ToastService.Notify(new(ToastType.Danger, $"Unable to start {e.Name}: {result.ReasonPhrase}"));
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.Notify(new(ToastType.Danger, $"Unable to start {e.Name}: {ex.ToString()}"));
+        }
+
+        await TryRefreshStatus();
+    }
+
+    private async Task StopFunc(GridItem e)
+    {
+        try
+        {
+            var result = await FunctionApps.StopAsync(AzureClient, e.Id);
+            if (!result.IsError)
+            {
+                ToastService.Notify(new(ToastType.Success, $"{e.Name} successfully stopped."));
+            }
+            else
+            {
+                ToastService.Notify(new(ToastType.Danger, $"Unable to stop {e.Name}: {result.ReasonPhrase}"));
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.Notify(new(ToastType.Danger, $"Unable to stop {e.Name}: {ex.ToString()}"));
+        }
+
+        await TryRefreshStatus();
+    }
+
+
+
+    private async Task RefreshStatus()
+    {
+        this.phoneTypeOptions = null;
+        await TryRefreshStatus(true);
+    }
+
+    private async Task<bool> TryRefreshStatus(bool setErrorMessage = false)
+    {
+        try
+        {
+            PreloadService.Show();
+
+            this.phoneTypeOptions = (await FunctionApps.GetListOfAllAsync(AzureClient).ToListAsync())
+        .Select(a => new GridItem(a.Id, a.Name, a.State))
+        .AsQueryable();
+
+            return true;
+        }
+        finally
+        {
+            PreloadService.Hide();
+        }
+    }
+
+
+
+}

@@ -1,18 +1,10 @@
 ﻿using Azure.Core;
-using Azure.ResourceManager.Resources;
 using Azure.ResourceManager;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using Azure.ResourceManager.AppService;
-using System.Net.Http.Json;
 using Azure.Identity;
-using Microsoft.Azure.ServiceBus.Primitives;
-using Microsoft.Azure.Amqp.Framing;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 using System.Text.Json;
+using LanguageExt.Common;
 
 namespace FunctionApp.Logic
 {
@@ -60,31 +52,50 @@ namespace FunctionApp.Logic
             }
         }
         
+        public record FunctionStatus(string Status);
         
-        public async Task<string> DisableAsync(ArmClient client, string functionAppId, string functionId)
+
+        public async Task<Result<FunctionStatus>> DisableAsync(ArmClient client, string functionAppId, string functionId)
         {
-            var response = await EnableDisableAsync(client, functionAppId, functionId, "{\"properties\":\"disabled\"}");
+            var response = await SetPropertiesAync(client, functionAppId, functionId, "disabled");
+
+            var responseString = await response.Content.ReadAsStringAsync();
 
             if (response.IsSuccessStatusCode)
-                return "Success (disable)";
+            {
+                var newValue = ParsePropertiesValue(responseString);
+                return new FunctionStatus(newValue);
+            }
             else
-                return "Failed:" + response.StatusCode + " " + (await response.Content.ReadAsStringAsync());
+                return new Result<FunctionStatus>(new Exception(response.StatusCode + " " + responseString));
         }
 
 
-        public async Task<string> EnableAsync(ArmClient client, string functionAppId, string functionId)
+        public async Task<Result<FunctionStatus>> EnableAsync(ArmClient client, string functionAppId, string functionId)
         {
-            var response = await EnableDisableAsync(client, functionAppId, functionId, "{\"properties\":\"enabled\"}");
+            var response = await SetPropertiesAync(client, functionAppId, functionId, "enabled");
+
+            var responseString = await response.Content.ReadAsStringAsync();
 
             if (response.IsSuccessStatusCode)
-                return "Success (enabled)";
+            {
+                var newValue = ParsePropertiesValue(responseString);
+                return new FunctionStatus(newValue);
+            }
             else
-                return "Failed:" + response.StatusCode + " " + (await response.Content.ReadAsStringAsync());
+                return new Result<FunctionStatus>(new Exception(response.StatusCode + " " + responseString));
         }
 
 
 
-        private async Task<HttpResponseMessage> EnableDisableAsync(ArmClient client, string functionAppId, string functionId, string putPayload)
+        private string ParsePropertiesValue(string responseContent)
+        {
+            var doc = JsonDocument.Parse(responseContent);
+            var value = doc.RootElement.GetProperty("properties").GetRawText().TrimStart('"').TrimEnd('"');
+            return value;
+        }
+
+        private async Task<HttpResponseMessage> SetPropertiesAync(ArmClient client, string functionAppId, string functionId, string propertiesValue)
         {
             var resource = client.GetWebSiteResource(new ResourceIdentifier(functionAppId));
             var func = await resource.GetSiteFunctionAsync(GetFunctionName(functionId));
@@ -94,18 +105,22 @@ namespace FunctionApp.Logic
             var credentials = new DefaultAzureCredential();
             var tokenResult = await credentials.GetTokenAsync(new TokenRequestContext(new[] { "https://management.azure.com/.default" }), CancellationToken.None);
 
+            // /subscriptions/6242e95d-15dc-4729-b59c-fdd867a434d2/resourceGroups/azurefunctions/providers/Microsoft.Web/sites/functionapp20250112081533B/functions/ShortRunningPeriodicJob/properties/state?api-version=2022-03-01
+
             using var httpClient = new HttpClient
             {
-                BaseAddress = new Uri("https://management.azure.com/subscriptions/")
+                BaseAddress = new Uri("https://management.azure.com/")
             };
 
             httpClient.DefaultRequestHeaders.Remove("Authorization");
             httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {tokenResult.Token}");
             httpClient.DefaultRequestHeaders.Add("x-functions-key", "0kyadiFUtMnf1uwVJ-E6cFfiI5cvd9fr2R5wDz7Sbp9yAzFu-WiO2w==");
 
-            var Uri = $"{data.Id}/properties/state?api-version=2018-11-01";
+            var Uri = $"{data.Id}/properties/state?api-version=2022-03-01";
 
-            var response = await httpClient.PutAsync(Uri, new StringContent(putPayload, Encoding.UTF8, "application/json"));
+            var payload = "{\"properties\":\"" + propertiesValue + "\"}";
+
+            var response = await httpClient.PutAsync(Uri, new StringContent(payload, Encoding.UTF8, "application/json"));
 
             return response;
         }
@@ -115,7 +130,7 @@ namespace FunctionApp.Logic
         // https://functionapp20250112081533b.azurewebsites.net/admin/functions/ShortRunningPeriodicJob
 
         // https://www.blueboxes.co.uk/how-to-use-azure-management-apis-in-c-with-azureidentity
-        public async Task<string> RunFunction(ArmClient client, string functionAppId, string functionId)
+        public async Task<HttpResponseMessage> RunFunction(ArmClient client, string functionAppId, string functionId)
         {
             var resource = client.GetWebSiteResource(new ResourceIdentifier(functionAppId));
             var func = await resource.GetSiteFunctionAsync(GetFunctionName(functionId));
@@ -137,12 +152,7 @@ namespace FunctionApp.Logic
 
             var response = await httpClient.PostAsync(Uri, new StringContent("{}", Encoding.UTF8, "application/json"));
 
-
-            if (response.IsSuccessStatusCode)
-                return "Success";
-            else
-                return "Failed:" + response.StatusCode + " " + (await response.Content.ReadAsStringAsync());
-
+            return response;
         }
 
 
