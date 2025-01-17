@@ -1,60 +1,82 @@
-﻿@page "/weather"
+﻿@page "/function-app/{fid}"
 @rendermode InteractiveServer
 @inject FunctionApps FunctionApps
 @inject ArmClient AzureClient
+@inject ToastService ToastService
 
 @using Azure.Identity
 @using Azure.ResourceManager
 @using BlazorPortal.Models
 @using FunctionApp.Logic
-
-<PageTitle>Weather</PageTitle>
-
-<h1>Weather</h1>
-
-<p>This component demonstrates showing data.</p>
+@using BlazorBootstrap
 
 <div>
-    <label>Phone Type</label>
+    <a href="function-apps"><Icon Name="IconName.ArrowLeft"></Icon> Back</a>&nbsp;&nbsp;&nbsp;&nbsp; <label>Function App</label>
     <select @onchange="OptionChanged" value=@functionAppId>
         @foreach (var option in phoneTypeOptions)
         {
             <option value="@option.Value" selected="@option.Selected">@option.Text</option>
         }
     </select>
+    &nbsp;&nbsp;&nbsp;&nbsp;
+    <span style="margin-left=50px">
+Status: @functionAppStatus
+&nbsp;
+    @if (functionAppStatus != "Running")
+    {
+<button class="btn btn-light" @onclick="StartFunc" title="Start Function App"><Icon Name="IconName.Play"></Icon></button>
+            }
+@if (functionAppStatus != "Stopped")
+            {
+<button class="btn btn-light" @onclick="StopFunc" title="Stop Function App"><Icon Name="IconName.Stop"></Icon></button>
+            }
+    </span>
 </div>
-@functionAppStatus
-<button class="tbn btn-danger" @onclick="StartFunc">Start</button>
-<button class="tbn btn-danger" @onclick="StopFunc">Stop</button>
-<div>@Message</div>
+
+
 <AzureFunctionTable @ref=azureFunctionTable FunctionAppId=@functionAppId ></AzureFunctionTable>
 
+<Toasts class="p-3" AutoHide="true" StackLength="10" Placement="ToastsPlacement.TopRight" Delay="6000" ShowCloseButton="true" />
+
 @code {
+    [Parameter] public string fid { get; set; }
     string functionAppId = "";
     string functionAppStatus = "Loading...";
     protected AzureFunctionTable? azureFunctionTable;
-    string Message = "";
 
-    List<SelectListItem> phoneTypeOptions { get; set; } = [new SelectListItem("", "Loading ....", true)];
 
-    public record SelectListItem(string Value, string Text, bool Selected);
+    List<SelectListItem> phoneTypeOptions { get; set; } = [new SelectListItem("", "Loading ....")];
+
+    public record SelectListItem(string Value, string Text)
+    {
+        public bool Selected;
+    }
 
 
     protected override async Task OnInitializedAsync()
     {
-        this.phoneTypeOptions = (await FunctionApps.GetListOfAllAsync(AzureClient))
-            .Reverse()
-            .Select(a => new SelectListItem(a.Id ?? "", a.Name, false))
+
+        this.phoneTypeOptions = (await FunctionApps.GetListOfAllAsync(AzureClient).ToListAsync())
+            .Select(a => new SelectListItem(a.Id ?? "", a.Name))
             .ToList();
 
         if (!phoneTypeOptions.Any())
         {
-            phoneTypeOptions = [new SelectListItem("", "No function app found.", true)];
+            phoneTypeOptions = [new SelectListItem("", "No function app found.")];
             this.functionAppId = "";
         }
         else
         {
             this.functionAppId = phoneTypeOptions.First().Value;
+        }
+
+        {
+            var selected = phoneTypeOptions.FirstOrDefault(a => a.Text == fid);
+            if(selected != null)
+            {
+                selected.Selected = true;
+                this.functionAppId = selected.Value;
+            }
         }
 
         await azureFunctionTable?.RefreshMeAsync(functionAppId);
@@ -67,7 +89,6 @@
         functionAppId = selectedValue;
 
         await azureFunctionTable?.RefreshMeAsync(functionAppId);
-        this.Message = "";
         await TryRefreshStatus();
     }
 
@@ -78,16 +99,16 @@
             var result = await FunctionApps.StartAsync(AzureClient, this.functionAppId);
             if (!result.IsError)
             {
-                Message = "Service successfully started.";
+                ToastService.Notify(new(ToastType.Success, $"Service successfully started."));
             }
             else
             {
-                Message = "Error: " + result.ReasonPhrase;
+                ToastService.Notify(new(ToastType.Danger, $"Unable to start service: {result.ReasonPhrase}"));
             }
         }
         catch(Exception ex)
         {
-            Message = ex.ToString();
+            ToastService.Notify(new(ToastType.Danger, $"Unable to start service: {ex.ToString()}"));
         }
 
         await TryRefreshStatus();
@@ -100,16 +121,16 @@
             var result = await FunctionApps.StopAsync(AzureClient, this.functionAppId);
             if (!result.IsError)
             {
-                Message = "Service successfully stopped.";
+                ToastService.Notify(new(ToastType.Success, $"Service successfully stopped."));
             }
             else
             {
-                Message = "Error: " + result.ReasonPhrase;
+                ToastService.Notify(new(ToastType.Danger, $"Unable to stop service: {result.ReasonPhrase}"));
             }
         }
         catch (Exception ex)
         {
-            Message = ex.ToString();
+            ToastService.Notify(new(ToastType.Danger, $"Unable to stop service: {ex.ToString()}"));
         }
 
         await TryRefreshStatus();
@@ -137,7 +158,10 @@
         }
         catch (Exception ex)
         {
-            if (setErrorMessage) Message = ex.ToString();
+            if (setErrorMessage)
+            {
+                ToastService.Notify(new(ToastType.Danger, $"Unable to refresh status: {ex.ToString()}"));
+            }
             functionAppStatus = "na";
             return false;
         }

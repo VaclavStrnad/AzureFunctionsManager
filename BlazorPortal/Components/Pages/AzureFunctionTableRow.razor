@@ -1,16 +1,18 @@
 ﻿@using Azure.ResourceManager
 @using BlazorPortal.Models
 @using FunctionApp.Logic
+@using BlazorBootstrap
 
 @inject Functions Functions
 @inject ArmClient AzureClient
 
 
 <tr>
-    <td><button class="tbn btn-danger" @onclick="EnableFunc">Enable</button>
-        <button class="tbn btn-danger" @onclick="DisableFunc">Disable</button>
-        <button class="tbn btn-danger" @onclick="RunFunc">Run</button>
-        <button class="tbn btn-danger" @onclick="LogFunc">Log</button>
+    <td>
+        <button class="btn btn-outline-primary" @onclick="EnableFunc">Enable</button>
+        <button class="btn btn-outline-primary" @onclick="DisableFunc">Disable</button>
+        <button class="btn btn-outline-primary" @onclick="RunFunc">Run</button>
+        <button class="btn btn-outline-primary" @onclick="LogFunc">Log</button>
     </td>
     <td>@Item.Name</td>
     <td>@Item.Status</td>
@@ -18,11 +20,13 @@
 </tr>
 @if(Message != null){
     <tr>
-        <td colspan="3">
-            &nbsp;&nbsp;&nbsp;@Message
+        <td colspan="4">
+            <Callout HideHeading="true">
+            <p>@Message</p>
+            </Callout>
         </td>
         <td>
-            <button class="tbn btn-danger" @onclick="HideMessageFunc">Hide Message</button>
+            <button class="btn btn-outline-primary" @onclick="HideMessageFunc" title="Hide Messahe"><Icon Name="IconName.X"></Icon></button>
         </td>
     </tr>
 }
@@ -30,10 +34,14 @@
 {
     <tr>
         <td colspan="3">
+            <Callout Color="CalloutColor.Success" HideHeading="true">
+                <p>
             <LogRender Item=@Item></LogRender>
+                </p>
+            </Callout>
         </td>
         <td>
-            <button class="tbn btn-danger" @onclick="CloseLogFunc">Close Log</button>
+            <button class="btn btn-outline-primary" @onclick="CloseLogFunc" title="Close Log"><Icon Name="IconName.X"></Icon></button>
         </td>
     </tr>
 }
@@ -49,7 +57,11 @@
         try
         {
             var result = await Functions.RunFunction(AzureClient, Item.FunctionAppId, Item.Id);
-            Message = DateTime.Now.ToString() + " " + result;
+
+            if (result.IsSuccessStatusCode)
+                Message = "Function successfully triggered.";
+            else
+                Message = "Unable to run the function - an error occured: " + result.StatusCode + " - " + (await result.Content.ReadAsStringAsync());
         }
         catch (Exception ex)
         {

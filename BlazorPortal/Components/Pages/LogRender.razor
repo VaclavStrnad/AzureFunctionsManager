@@ -33,6 +33,11 @@
         {
             if (LogTextLines == null) LogTextLines = new List<string>();
             LogTextLines.Add(line);
+            if (LogTextLines.Count > 100)
+            {
+                LogTextLines[0] = "...";
+                LogTextLines.RemoveAt(1);
+            }
             StateHasChanged();
         }
     }

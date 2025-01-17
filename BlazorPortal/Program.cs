@@ -7,7 +7,10 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents();
+    .AddInteractiveServerComponents()
+    ;
+
+builder.Services.AddBlazorBootstrap();
 
 builder.Services.AddSingleton<FunctionApps>();
 builder.Services.AddSingleton<Functions>();

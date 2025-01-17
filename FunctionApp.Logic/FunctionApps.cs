@@ -8,16 +8,19 @@ namespace FunctionApp.Logic
 {
     public class FunctionApps
     {
-        public async Task<IEnumerable<GenericResourceData>> GetListOfAllAsync(ArmClient client)
+        public async IAsyncEnumerable<WebSiteData> GetListOfAllAsync(ArmClient client)
         {
-            SubscriptionResource subscription = await client.GetDefaultSubscriptionAsync();
-
-            var res = subscription.GetGenericResources();
-            var ress = res.Select(a => a.Data).ToArray();
-            var funcApps = ress.Where(a => a.Kind == "functionapp" && a.ResourceType.Type == "sites");
-
-            return funcApps;
+            var subscription = await client.GetDefaultSubscriptionAsync();
+            
+            await foreach(var site in subscription.GetWebSitesAsync())
+            {
+                if(site.Data.Kind == "functionapp" && site.Data.ResourceType.Type == "sites")
+                {
+                    yield return site.Data;
+                }
+            }
         }
+
 
         public async Task<Azure.Response> StartAsync(ArmClient client, string id)
         {

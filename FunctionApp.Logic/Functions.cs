@@ -115,7 +115,7 @@ namespace FunctionApp.Logic
         // https://functionapp20250112081533b.azurewebsites.net/admin/functions/ShortRunningPeriodicJob
 
         // https://www.blueboxes.co.uk/how-to-use-azure-management-apis-in-c-with-azureidentity
-        public async Task<string> RunFunction(ArmClient client, string functionAppId, string functionId)
+        public async Task<HttpResponseMessage> RunFunction(ArmClient client, string functionAppId, string functionId)
         {
             var resource = client.GetWebSiteResource(new ResourceIdentifier(functionAppId));
             var func = await resource.GetSiteFunctionAsync(GetFunctionName(functionId));
@@ -137,12 +137,7 @@ namespace FunctionApp.Logic
 
             var response = await httpClient.PostAsync(Uri, new StringContent("{}", Encoding.UTF8, "application/json"));
 
-
-            if (response.IsSuccessStatusCode)
-                return "Success";
-            else
-                return "Failed:" + response.StatusCode + " " + (await response.Content.ReadAsStringAsync());
-
+            return response;
         }
 
 
