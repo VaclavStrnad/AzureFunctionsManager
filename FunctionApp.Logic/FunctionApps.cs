@@ -1,7 +1,6 @@
 ﻿using Azure.Core;
 using Azure.ResourceManager;
 using Azure.ResourceManager.AppService;
-using Azure.ResourceManager.Resources;
 
 
 namespace FunctionApp.Logic

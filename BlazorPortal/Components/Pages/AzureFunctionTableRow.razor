@@ -47,47 +47,54 @@
 }
 
 @code {
-    [Parameter] public AzureFunction Item { get; set; }
-    [Parameter] public bool ShowLog { get; set; } = false;
-    [Parameter] public string? Message { get; set; } = null;
+        [Parameter] public AzureFunction Item { get; set; }
+        [Parameter] public bool ShowLog { get; set; } = false;
+        [Parameter] public string? Message { get; set; } = null;
 
 
-    private async Task RunFunc(MouseEventArgs e)
-    {
-        try
+        private async Task RunFunc(MouseEventArgs e)
         {
-            var result = await Functions.RunFunction(AzureClient, Item.FunctionAppId, Item.Id);
+            try
+            {
+                var result = await Functions.RunFunction(AzureClient, Item.FunctionAppId, Item.Id);
 
-            if (result.IsSuccessStatusCode)
-                Message = "Function successfully triggered.";
+                if (result.IsSuccessStatusCode)
+                    Message = "Function successfully triggered (" + DateTime.Now + ").";
+                else
+                    Message = "Unable to run the function - an error occured: " + result.StatusCode + " - " + (await result.Content.ReadAsStringAsync());
+            }
+            catch (Exception ex)
+            {
+                Message = ex.ToString();
+            }
+        }
+
+        private async Task EnableFunc(MouseEventArgs e)
+        {
+            try
+            {
+                var result = await Functions.EnableAsync(AzureClient, Item.FunctionAppId, Item.Id);
+                Message = result.Match(status => { this.Item.Status = status.Status; return null; }, ex => ex.ToString());
+            }
+            catch (Exception ex)
+            {
+                Message = ex.ToString();
+            }
+        }
+
+        private async Task DisableFunc(MouseEventArgs e)
+        {
+            try
+            {
+                var result = await Functions.DisableAsync(AzureClient, Item.FunctionAppId, Item.Id);
+                if (result.IsSuccess)
+                {
+                    Message = result.Match(status => { this.Item.Status = status.Status; return null; }, ex => ex.ToString());
+                }
             else
-                Message = "Unable to run the function - an error occured: " + result.StatusCode + " - " + (await result.Content.ReadAsStringAsync());
-        }
-        catch (Exception ex)
-        {
-            Message = ex.ToString();
-        }
-    }
-
-    private async Task EnableFunc(MouseEventArgs e)
-    {
-        try
-        {
-            var result = await Functions.EnableAsync(AzureClient, Item.FunctionAppId, Item.Id);
-            Message = result;
-        }
-        catch (Exception ex)
-        {
-            Message = ex.ToString();
-        }
-    }
-
-    private async Task DisableFunc(MouseEventArgs e)
-    {
-        try
-        {
-            var result = await Functions.DisableAsync(AzureClient, Item.FunctionAppId, Item.Id);
-            Message = result;
+            {
+                Message = result.ToString();
+            }
         }
         catch (Exception ex)
         {
