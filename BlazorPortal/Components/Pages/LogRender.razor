@@ -23,13 +23,19 @@
 </div>
 
 @code {
-    [Parameter] public AzureFunction Item { get; set; }
+    [Parameter] public AzureFunction? Item { get; set; }
 
     private List<string>? LogTextLines = null;
 
     protected override async Task OnInitializedAsync()
     {
-        await foreach (var line in Functions.ReadFilesystemLogs(AzureClient, Item.FunctionAppId, Item.Id))
+        if(this.Item == null)
+        {
+            LogTextLines = new List<string>() { "AzureFunction Item parameter not set." };
+            return;
+        }
+
+        await foreach (var line in Functions.ReadFilesystemLogs(AzureClient, Item!.FunctionAppId, Item.Id))
         {
             if (LogTextLines == null) LogTextLines = new List<string>();
             LogTextLines.Add(line);

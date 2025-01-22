@@ -21,16 +21,16 @@ namespace FunctionApp.Logic
         }
 
 
-        public async Task<Azure.Response> StartAsync(ArmClient client, string id)
+        public Task<Azure.Response> StartAsync(ArmClient client, string id)
         {
             var resource = client.GetWebSiteResource(new ResourceIdentifier(id));
-            return await resource.StartAsync();
+            return resource.StartAsync();
         }
 
-        public async Task<Azure.Response> StopAsync(ArmClient client, string id)
+        public Task<Azure.Response> StopAsync(ArmClient client, string id)
         {
             var resource = client.GetWebSiteResource(new ResourceIdentifier(id));
-            return await resource.StopAsync();
+            return resource.StopAsync();
         }
 
         public async Task<string> GetStatusAsync(ArmClient client, string id)

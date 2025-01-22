@@ -32,24 +32,14 @@ else
 }
 
 @code {
-    [Parameter] public string FunctionAppId { get; set; }
+    [Parameter] public string FunctionAppId { get; set; } = "";
 
     private AzureFunction[]? functions;
 
-    protected override async Task OnInitializedAsync()
+    protected override Task OnInitializedAsync()
     {
         functions = null;
-
-        /*if(FunctionAppId == null)
-        {
-        functions = null;
-        return;
-        }
-
-        // Simulate asynchronous loading to demonstrate streaming rendering
-        // await Task.Delay(500);
-
-        functions = [];*/
+        return Task.CompletedTask;
     }
 
     public async Task RefreshMeAsync(string functionAppId)
@@ -61,28 +51,18 @@ else
         }
         else 
         {
-            /*functions = Enumerable.Range(1, 5).Select(index => new AzureFunction
-                {
-                Id = index.ToString(),
-                Name = "Name " + index + " " + FunctionAppId
-            }).ToArray();*/
-
-            var funcs = Functions.GetListOfAllAsync(AzureClient, FunctionAppId);
-
-            functions = await funcs.Select(a => new AzureFunction
-            {
-                    Id = a.Id,
-                    FunctionAppId = functionAppId,
-                    Name = a.Name,
-                    Status = a.Status,
-                    Trigger = GetTriggerDescription(a.Trigger)
-            }).ToArrayAsync();
-
-
+            functions = await Functions.GetListOfAllAsync(AzureClient, FunctionAppId).Select(a => new AzureFunction
+                (
+                    Id: a.Id,
+                    FunctionAppId: functionAppId,
+                    Name: a.Name,
+                    Status: a.Status,
+                    Trigger: GetTriggerDescription(a.Trigger)
+                )
+            ).ToArrayAsync();
         }
 
         StateHasChanged();
-
     }
 
     private string GetTriggerDescription(string trigger)
@@ -90,9 +70,10 @@ else
         try
         {
             return CronExpressionDescriptor.ExpressionDescriptor.GetDescription(trigger);
-        } catch(Exception ex)
+        }
+        catch(Exception)
         {
-            return trigger;
+            return trigger;  // We do not understand the trigger description so we just return it to user
         }
     }
 }

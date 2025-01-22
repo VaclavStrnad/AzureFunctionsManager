@@ -14,25 +14,24 @@
 @using Microsoft.AspNetCore.Components.QuickGrid
 @using BlazorBootstrap
 
-<PageTitle>Weather</PageTitle>
+<PageTitle>Function Apps</PageTitle>
 
 <h2>Function Apps &nbsp;&nbsp;<button class="btn btn-outline-primary" @onclick="@(() => RefreshStatus())"><Icon Name="IconName.ArrowClockwise"></Icon> Refresh</button></h2>
 
 <Preload LoadingText="Loading..."  />
 
-@if (phoneTypeOptions == null)
+@if (functionApps == null)
 {
     <div>Loading...</div>
 }
 else
 {
-    <QuickGrid Items="phoneTypeOptions">
+    <QuickGrid Items="functionApps">
         <TemplateColumn>
-            <NavLink class="nav-link" href="@("/function-app/" + context.Name)" title="Open Function App Detail Page">
-                <Icon Name="IconName.ZoomIn"></Icon> 
+            <NavLink class="nav-link" href="@("/function-app/" + context.Name)" title="Open Function App Detail Page" style="text-decoration: underline; color: rgb(0, 107, 183);">
+                @(context.Name)
             </NavLink>
         </TemplateColumn>
-        <PropertyColumn Property="@(p => p.Name)" Sortable="true" />
         <PropertyColumn Property="@(p => p.Status)" Sortable="true" />
         <TemplateColumn>
             @if (context.Status != "Running")
@@ -53,17 +52,15 @@ else
 @code {
 
 
-    IQueryable<GridItem>? phoneTypeOptions { get; set; } = null;
+    IQueryable<GridItem>? functionApps { get; set; } = null;
 
     public record GridItem(string Id, string Name, string Status);
 
 
     protected override async Task OnInitializedAsync()
     {
-
         await TryRefreshStatus();
     }
-
 
 
     private async Task StartFunc(GridItem e)
@@ -114,7 +111,7 @@ else
 
     private async Task RefreshStatus()
     {
-        this.phoneTypeOptions = null;
+        this.functionApps = null;
         await TryRefreshStatus(true);
     }
 
@@ -124,11 +121,16 @@ else
         {
             PreloadService.Show();
 
-            this.phoneTypeOptions = (await FunctionApps.GetListOfAllAsync(AzureClient).ToListAsync())
-        .Select(a => new GridItem(a.Id, a.Name, a.State))
-        .AsQueryable();
+            this.functionApps = (await FunctionApps.GetListOfAllAsync(AzureClient).ToListAsync())
+                .Select(a => new GridItem(a.Id!, a.Name, a.State))
+                .AsQueryable();
 
             return true;
+        } 
+        catch(Exception ex)
+        {
+            if (setErrorMessage) ToastService.Notify(new(ToastType.Danger, $"Unable to refresh data: {ex.ToString()}"));
+            throw;
         }
         finally
         {

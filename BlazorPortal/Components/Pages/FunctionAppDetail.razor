@@ -1,4 +1,4 @@
-﻿@page "/function-app/{fid}"
+﻿@page "/function-app/{SelectedFunctionAppId}"
 @rendermode InteractiveServer
 @inject FunctionApps FunctionApps
 @inject ArmClient AzureClient
@@ -39,7 +39,7 @@ Status: @functionAppStatus
 <Toasts class="p-3" AutoHide="true" StackLength="10" Placement="ToastsPlacement.TopRight" Delay="6000" ShowCloseButton="true" />
 
 @code {
-    [Parameter] public string fid { get; set; }
+    [Parameter] public string? SelectedFunctionAppId { get; set; }
     string functionAppId = "";
     string functionAppStatus = "Loading...";
     protected AzureFunctionTable? azureFunctionTable;
@@ -57,7 +57,7 @@ Status: @functionAppStatus
     {
 
         this.phoneTypeOptions = (await FunctionApps.GetListOfAllAsync(AzureClient).ToListAsync())
-            .Select(a => new SelectListItem(a.Id ?? "", a.Name))
+            .Select(a => new SelectListItem(a.Id!, a.Name))
             .ToList();
 
         if (!phoneTypeOptions.Any())
@@ -71,7 +71,7 @@ Status: @functionAppStatus
         }
 
         {
-            var selected = phoneTypeOptions.FirstOrDefault(a => a.Text == fid);
+            var selected = phoneTypeOptions.FirstOrDefault(a => a.Text == SelectedFunctionAppId);
             if(selected != null)
             {
                 selected.Selected = true;
@@ -79,7 +79,7 @@ Status: @functionAppStatus
             }
         }
 
-        await azureFunctionTable?.RefreshMeAsync(functionAppId);
+        await (azureFunctionTable?.RefreshMeAsync(functionAppId) ?? Task.CompletedTask);
         await TryRefreshStatus();
     }
 
@@ -88,7 +88,7 @@ Status: @functionAppStatus
         string selectedValue = e.Value?.ToString() ?? "";
         functionAppId = selectedValue;
 
-        await azureFunctionTable?.RefreshMeAsync(functionAppId);
+        await (azureFunctionTable?.RefreshMeAsync(functionAppId) ?? Task.CompletedTask);
         await TryRefreshStatus();
     }
 

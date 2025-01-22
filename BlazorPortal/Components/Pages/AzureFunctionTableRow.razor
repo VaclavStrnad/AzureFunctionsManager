@@ -14,9 +14,9 @@
         <button class="btn btn-outline-primary" @onclick="RunFunc">Run</button>
         <button class="btn btn-outline-primary" @onclick="LogFunc">Log</button>
     </td>
-    <td>@Item.Name</td>
-    <td>@Item.Status</td>
-    <td>@Item.Trigger</td>
+    <td>@(Item?.Name ?? "na")</td>
+    <td>@(Item?.Status ?? "na")</td>
+    <td>@(Item?.Trigger ?? "na")</td>
 </tr>
 @if(Message != null){
     <tr>
@@ -47,35 +47,39 @@
 }
 
 @code {
-        [Parameter] public AzureFunction Item { get; set; }
-        [Parameter] public bool ShowLog { get; set; } = false;
-        [Parameter] public string? Message { get; set; } = null;
+    [Parameter] public AzureFunction? Item { get; set; }
+    [Parameter] public bool ShowLog { get; set; } = false;
+    [Parameter] public string? Message { get; set; } = null;
 
 
-        private async Task RunFunc(MouseEventArgs e)
+    private async Task RunFunc(MouseEventArgs e)
+    {
+        if (Item == null) return;
+
+        try
         {
-            try
-            {
-                var result = await Functions.RunFunction(AzureClient, Item.FunctionAppId, Item.Id);
+            var result = await Functions.RunFunction(AzureClient, Item.FunctionAppId, Item.Id);
 
-                if (result.IsSuccessStatusCode)
-                    Message = "Function successfully triggered (" + DateTime.Now + ").";
-                else
-                    Message = "Unable to run the function - an error occured: " + result.StatusCode + " - " + (await result.Content.ReadAsStringAsync());
-            }
-            catch (Exception ex)
-            {
-                Message = ex.ToString();
-            }
+            if (result.IsSuccessStatusCode)
+                Message = "Function successfully triggered (" + DateTime.Now + ").";
+            else
+                Message = "Unable to run the function - an error occured: " + result.StatusCode + " - " + (await result.Content.ReadAsStringAsync());
         }
-
-        private async Task EnableFunc(MouseEventArgs e)
+        catch (Exception ex)
         {
-            try
-            {
-                var result = await Functions.EnableAsync(AzureClient, Item.FunctionAppId, Item.Id);
-                Message = result.Match(status => { this.Item.Status = status.Status; return null; }, ex => ex.ToString());
-            }
+            Message = ex.ToString();
+        }
+    }
+
+    private async Task EnableFunc(MouseEventArgs e)
+    {
+        if (Item == null) return;
+
+        try
+        {
+            var result = await Functions.EnableAsync(AzureClient, Item.FunctionAppId, Item.Id);
+            Message = result.Match<string?>(status => { this.Item = this.Item with { Status = status.Status }; return null; }, ex => ex.ToString());
+        }
             catch (Exception ex)
             {
                 Message = ex.ToString();
@@ -84,12 +88,14 @@
 
         private async Task DisableFunc(MouseEventArgs e)
         {
+            if (Item == null) return;
+
             try
             {
                 var result = await Functions.DisableAsync(AzureClient, Item.FunctionAppId, Item.Id);
                 if (result.IsSuccess)
                 {
-                    Message = result.Match(status => { this.Item.Status = status.Status; return null; }, ex => ex.ToString());
+                Message = result.Match<string?>(status => { this.Item = this.Item with { Status = status.Status }; return null; }, ex => ex.ToString());
                 }
             else
             {
@@ -107,12 +113,12 @@
         ShowLog = true;
     }
 
-    private async Task CloseLogFunc(MouseEventArgs e)
+    private void CloseLogFunc(MouseEventArgs e)
     {
         ShowLog = false;
     }
 
-    private async Task HideMessageFunc(MouseEventArgs e)
+    private void HideMessageFunc(MouseEventArgs e)
     {
         Message = null;
     }
