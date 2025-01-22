@@ -1,5 +1,5 @@
 ﻿@page "/function-apps"
-@rendermode InteractiveServer
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @inject FunctionApps FunctionApps
 @inject ArmClient AzureClient
 @inject NavigationManager NavManager
@@ -27,13 +27,13 @@
 else
 {
     <QuickGrid Items="functionApps">
-        <TemplateColumn>
+        <TemplateColumn Title="Name" Sortable="true" SortBy="SortByName">
             <NavLink class="nav-link" href="@("/function-app/" + context.Name)" title="Open Function App Detail Page" style="text-decoration: underline; color: rgb(0, 107, 183);">
                 @(context.Name)
             </NavLink>
         </TemplateColumn>
         <PropertyColumn Property="@(p => p.Status)" Sortable="true" />
-        <TemplateColumn>
+        <TemplateColumn Title="Actions">
             @if (context.Status != "Running")
             {
                 <button class="btn btn-light" @onclick="@(() => StartFunc(context))" title="Start Function App"><Icon Name="IconName.Play"></Icon></button>
@@ -56,10 +56,11 @@ else
 
     public record GridItem(string Id, string Name, string Status);
 
+    GridSort<GridItem> SortByName = GridSort<GridItem>.ByAscending(a => a.Name);
 
     protected override async Task OnInitializedAsync()
     {
-        await TryRefreshStatus();
+       await TryRefreshStatus();
     }
 
 

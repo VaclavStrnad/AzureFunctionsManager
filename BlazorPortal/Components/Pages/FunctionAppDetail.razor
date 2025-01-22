@@ -1,5 +1,5 @@
 ﻿@page "/function-app/{SelectedFunctionAppId}"
-@rendermode InteractiveServer
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @inject FunctionApps FunctionApps
 @inject ArmClient AzureClient
 @inject ToastService ToastService
@@ -13,7 +13,7 @@
 <div>
     <a href="function-apps"><Icon Name="IconName.ArrowLeft"></Icon> Back</a>&nbsp;&nbsp;&nbsp;&nbsp; <label>Function App</label>
     <select @onchange="OptionChanged" value=@functionAppId>
-        @foreach (var option in phoneTypeOptions)
+        @foreach (var option in functionAppsList)
         {
             <option value="@option.Value" selected="@option.Selected">@option.Text</option>
         }
@@ -45,48 +45,50 @@ Status: @functionAppStatus
     protected AzureFunctionTable? azureFunctionTable;
 
 
-    List<SelectListItem> phoneTypeOptions { get; set; } = [new SelectListItem("", "Loading ....")];
+    List<SelectListItem> functionAppsList { get; set; } = [new SelectListItem("", "Loading ....")];
 
     public record SelectListItem(string Value, string Text)
     {
         public bool Selected;
+        public string Status;
     }
 
 
     protected override async Task OnInitializedAsync()
     {
 
-        this.phoneTypeOptions = (await FunctionApps.GetListOfAllAsync(AzureClient).ToListAsync())
-            .Select(a => new SelectListItem(a.Id!, a.Name))
+        this.functionAppsList = (await FunctionApps.GetListOfAllAsync(AzureClient).ToListAsync())
+            .Select(a => new SelectListItem(a.Id!, a.Name){ Status = a.State })
             .ToList();
 
-        if (!phoneTypeOptions.Any())
+        if (!functionAppsList.Any())
         {
-            phoneTypeOptions = [new SelectListItem("", "No function app found.")];
+            functionAppsList = [new SelectListItem("", "No function app found.")];
             this.functionAppId = "";
         }
         else
         {
-            this.functionAppId = phoneTypeOptions.First().Value;
+            this.functionAppId = functionAppsList.First().Value;
         }
 
         {
-            var selected = phoneTypeOptions.FirstOrDefault(a => a.Text == SelectedFunctionAppId);
+            var selected = functionAppsList.FirstOrDefault(a => a.Text == SelectedFunctionAppId);
             if(selected != null)
             {
                 selected.Selected = true;
                 this.functionAppId = selected.Value;
+                this.functionAppStatus = selected.Status;
             }
         }
 
         await (azureFunctionTable?.RefreshMeAsync(functionAppId) ?? Task.CompletedTask);
-        await TryRefreshStatus();
     }
 
     private async Task OptionChanged(ChangeEventArgs e)
     {
         string selectedValue = e.Value?.ToString() ?? "";
         functionAppId = selectedValue;
+        this.functionAppStatus = "";
 
         await (azureFunctionTable?.RefreshMeAsync(functionAppId) ?? Task.CompletedTask);
         await TryRefreshStatus();
@@ -167,6 +169,4 @@ Status: @functionAppStatus
         }
     }
 
-
-    
 }
