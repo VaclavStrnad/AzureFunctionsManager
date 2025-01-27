@@ -5,6 +5,8 @@ using Azure.ResourceManager.AppService;
 using Azure.Identity;
 using System.Text.Json;
 using LanguageExt.Common;
+using Azure.Monitor.Query;
+using Azure.Monitor.Query.Models;
 
 
 namespace FunctionApp.Logic
@@ -164,6 +166,107 @@ namespace FunctionApp.Logic
                 if (doExit) break;
             }
         }
+
+
+        public async IAsyncEnumerable<string> ReadAppInsightsLogs(ArmClient client, string functionAppId, string functionId)
+        {
+            var q = @"traces | where timestamp > ago(1h) | take 100";
+            /*
+             AppTraces 
+| sort by TimeGenerated 
+             */
+
+            Azure.Core.ResourceIdentifier resourceIdentifier
+                = new Azure.Core.ResourceIdentifier("/subscriptions/6242e95d-15dc-4729-b59c-fdd867a434d2/resourceGroups/AzureFunctions/providers/microsoft.insights/components/functionapp20250112081533B");
+
+            var alreadyProcessedHT = new HashSet<string>();
+            LogsTable? logsTable = null;
+
+            while (true)
+            {
+                string? line;
+                bool doExit = false;
+                try
+                {
+                    if (logsTable == null)
+                    {
+                        var result = await this.QueryAsync(resourceIdentifier, q, TimeSpan.FromHours(1));
+                        logsTable = result.Table;
+                    }
+
+                    line = logsTable.Rows.Where(a=> !alreadyProcessedHT.Contains(a.ToString())).FirstOrDefault()?.ToString();
+                    if (line != null)
+                    {
+                        alreadyProcessedHT.Add(line);
+                    }
+
+                    if (line == null)
+                    {
+                        await Task.Delay(TimeSpan.FromSeconds(2));
+                        var result = await this.QueryAsync(resourceIdentifier, q, TimeSpan.FromHours(1));
+                        logsTable = result.Table;
+                        // line = "Log stream terminated.";
+                        // doExit = true;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    line = ex.ToString();
+                    doExit = true;
+                }
+                if(line != null) yield return line ?? "";
+                if (doExit) break;
+
+            }
+        }
+
+  
+        public async IAsyncEnumerable<string> ReadAppInsightsLiveMetricsLogs(ArmClient client, string functionAppId, string functionId)
+        {
+            // Implement ITelemetryProcessor inside the function app - the process will pass telemtry data to an internal API implemented by Blazor Portal (but only if Blazor portal wants to listen to them)
+            // Example: https://stackoverflow.com/questions/59504687/retrieve-azure-appinsights-live-metrics-through-api
+            // https://github.com/microsoft/ApplicationInsights-dotnet/blob/develop/WEB/Src/PerformanceCollector/PerformanceCollector/QuickPulseTelemetryProcessor.cs
+
+            yield return "Not Implemented";
+        }
+
+
+        // TODO: https://github.com/Azure-Samples/app-service-dotnet-manage-logs-for-function-apps/blob/master/Program.cs
+        // https://learn.microsoft.com/en-us/azure/azure-functions/functions-monitoring
+        // https://learn.microsoft.com/en-us/azure/app-service/troubleshoot-diagnostic-logs#stream-logs
+        // TODO
+
+
+        // App Insights logs:
+        // https://stackoverflow.com/questions/75573578/retrieve-logs-from-application-insights-using-c-sharp-net-core-function
+        // https://zimmergren.net/retrieve-logs-from-application-insights-programmatically-with-net-core-c/
+        // ! https://stackoverflow.com/questions/76530673/how-to-fetch-records-from-the-azure-application-insights-using-c
+        // https://learn.microsoft.com/en-us/azure/azure-monitor/app/live-stream?tabs=otel - Live metrics: Monitor and diagnose with 1-second latency
+
+        public async Task<IReadOnlyList<T>> QueryWorkspaceAsync<T>(string query, TimeSpan timeSpan)
+        {
+            
+            Azure.Monitor.Query.LogsQueryClient _client = new LogsQueryClient(new DefaultAzureCredential()); 
+
+            var response = await _client.QueryWorkspaceAsync<T>("8945cf2e-22a8-485a-b257-1b48d5c79623", query, new QueryTimeRange(timeSpan));
+
+            return response.Value;
+        }
+
+
+        public async Task<LogsQueryResult> QueryAsync(ResourceIdentifier resourceIdentifier, string query, TimeSpan timeSpan)
+        {
+
+            Azure.Monitor.Query.LogsQueryClient _client = new LogsQueryClient(new DefaultAzureCredential());
+
+            // Execute the query
+            var response = await _client.QueryResourceAsync(resourceIdentifier, query, new QueryTimeRange(timeSpan));
+
+            // Response<IEnumerable<LogQueryResult>> response = await client.ExecuteQueryAsync(query);
+
+            return response.Value;
+        }
+
 
         private string GetFunctionName(string functionId)
         {

@@ -16,7 +16,7 @@ namespace FunctionApp
         [Function("ShortRunningPeriodicJob")]
         public void Run([TimerTrigger("*/30 * * * * *")] TimerInfo myTimer)  // "0 */5 * * * *" - every 5 hours
         {
-            _logger.LogInformation($"{nameof(ShortRunningPeriodicJob)} function executed at: {DateTime.Now}");
+            _logger.LogInformation($"{nameof(ShortRunningPeriodicJob)} function executed at: {DateTime.Now} XXXXX");
 
             if (myTimer.ScheduleStatus is not null)
             {
