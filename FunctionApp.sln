@@ -5,9 +5,11 @@ VisualStudioVersion = 17.9.34622.214
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FunctionApp", "FunctionApp\FunctionApp.csproj", "{EB04333F-3654-4D21-9943-7CB7F946A070}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BlazorPortal", "BlazorPortal\BlazorPortal.csproj", "{A99FB612-FE9F-4A18-99EA-F892249D771E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BlazorPortal", "BlazorPortal\BlazorPortal.csproj", "{A99FB612-FE9F-4A18-99EA-F892249D771E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FunctionApp.Logic", "FunctionApp.Logic\FunctionApp.Logic.csproj", "{3E276565-CEBD-4176-9922-1722ED98B0A6}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FunctionApp.Logic", "FunctionApp.Logic\FunctionApp.Logic.csproj", "{3E276565-CEBD-4176-9922-1722ED98B0A6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FunctionApp.Logic.Tests", "FunctionApp.Logic.Tests\FunctionApp.Logic.Tests.csproj", "{EF96B900-E5A3-4B1C-AB9A-89F193F70233}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -27,6 +29,10 @@ Global
 		{3E276565-CEBD-4176-9922-1722ED98B0A6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3E276565-CEBD-4176-9922-1722ED98B0A6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3E276565-CEBD-4176-9922-1722ED98B0A6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EF96B900-E5A3-4B1C-AB9A-89F193F70233}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EF96B900-E5A3-4B1C-AB9A-89F193F70233}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EF96B900-E5A3-4B1C-AB9A-89F193F70233}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EF96B900-E5A3-4B1C-AB9A-89F193F70233}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
