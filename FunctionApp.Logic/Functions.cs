@@ -131,6 +131,9 @@ namespace FunctionApp.Logic
         /// <returns></returns>
         public async IAsyncEnumerable<string> ReadFilesystemLogs(ArmClient client, string functionAppId, string functionId)
         {
+            // Enable filesystem logs: https://stackoverflow.com/questions/34810290/how-to-set-the-application-log-in-an-azure-webapp-using-azure-resource-manager
+            // https://learn.microsoft.com/en-us/answers/questions/1462650/how-to-configure-the-logging-level-for-appservicea
+
             var resource = client.GetWebSiteResource(new ResourceIdentifier(functionAppId));
             var func = await resource.GetSiteFunctionAsync(GetFunctionName(functionId));
             var data = func.Value.Data;
@@ -138,6 +141,7 @@ namespace FunctionApp.Logic
             using var httpClient = await CreateAuthorizedHttpClientWithMasterKey("https://" + (new Uri(data.Href)).Host.ToLower().Replace(".azurewebsites.net", ".scm.azurewebsites.net") + "/");
 
             var Uri = $"/api/logstream/application/functions/function/{GetFunctionName(functionId)}?api-version=2023-11-01";
+            
 
             var response = await httpClient.GetStreamAsync(Uri);
 
@@ -168,7 +172,12 @@ namespace FunctionApp.Logic
         }
 
 
-        public async IAsyncEnumerable<string> ReadAppInsightsLogs(ArmClient client, string functionAppId, string functionId)
+
+
+
+
+
+    public async IAsyncEnumerable<string> ReadAppInsightsLogs(ArmClient client, string functionAppId, string functionId)
         {
             var q = @"traces | where timestamp > ago(1h) | take 100";
             /*
@@ -316,6 +325,7 @@ namespace FunctionApp.Logic
                 client.DefaultRequestHeaders.Remove("Authorization");
                 client.DefaultRequestHeaders.Add("Authorization", $"Bearer {tokenResult.Token}");
                 client.DefaultRequestHeaders.Add("x-functions-key", GetFunctionAppMasterKeySecret());
+                client.DefaultRequestHeaders.Add("functionsportal", "1");   // This is here to force Azure to start to provide "Filesystem Logs". THis is not needed for other requests!
 
                 return client;
             }
